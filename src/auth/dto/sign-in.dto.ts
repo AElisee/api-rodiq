@@ -1,6 +1,6 @@
 import { Transform } from 'class-transformer';
 import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
-import { normalizeEmail } from './transforms';
+import { normalizeEmail } from '../../common/transforms';
 
 export class SignInDto {
   /**

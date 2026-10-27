@@ -7,12 +7,16 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { normalizeEmail, normalizePhone, trim } from './transforms';
+import {
+  normalizeEmail,
+  normalizePhone,
+  PHONE_MESSAGE,
+  PHONE_PATTERN,
+  trim,
+} from '../../common/transforms';
 
 // Lettres (accents compris), espaces, tirets et apostrophes : N'Guessan, Marie-Laure
 const NAME_PATTERN = /^\p{L}+(?:[\s'’-]\p{L}+)*$/u;
-const PHONE_PATTERN = /^\+225( \d{2}){5}$/;
-const PHONE_MESSAGE = 'Le numéro doit comporter 10 chiffres';
 
 export class SignUpDto {
   /**

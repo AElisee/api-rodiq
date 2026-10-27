@@ -1,5 +1,6 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -11,7 +12,7 @@ Documentation de l'API RODIQ.
 
 ## Authentification
 
-**Toutes les routes exigent une session**, sauf la connexion, l'inscription et la déconnexion.
+**Toutes les routes exigent une session**, sauf la connexion, l'inscription, la déconnexion et la lecture des réglages (\`GET /api/settings\`).
 
 Deux sessions **indépendantes**. À la connexion, l'API pose un cookie \`httpOnly\` et renvoie le même jeton
 dans le champ \`token\` de la réponse :
@@ -33,7 +34,9 @@ rien à faire de plus. Ou copier \`token\` dans « Authorize » (schéma \`clien
 `;
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Logos des réglages en data URL (500 Ko, soit ~700 Ko en base64) : au-delà des 100 Ko par défaut
+  app.useBodyParser('json', { limit: '1mb' });
   // Toutes les routes sous /api (sans version), documentation comprise : /api/docs
   app.setGlobalPrefix('api');
 

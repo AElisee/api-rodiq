@@ -19,3 +19,7 @@ export const normalizePhone = ({ value }: TransformFnParams): unknown => {
   if (digits.length !== 10) return value;
   return `+225 ${digits.replace(/(\d{2})(?=\d)/g, '$1 ')}`;
 };
+
+// Format produit par normalizePhone
+export const PHONE_PATTERN = /^\+225( \d{2}){5}$/;
+export const PHONE_MESSAGE = 'Le numéro doit comporter 10 chiffres';
