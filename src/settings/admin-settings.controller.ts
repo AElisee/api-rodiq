@@ -162,7 +162,12 @@ export class AdminSettingsController {
     summary: 'Fermetures : ajouter un jour fermé',
     description:
       "Aucun créneau n'est proposé ce jour-là. Remplace le motif si le jour est déjà fermé. " +
-      'Refuse une date passée.',
+      'Refuse une date passée, et un jour qui a encore des réservations en attente ou confirmées ' +
+      '(à refuser d’abord).',
+  })
+  @ApiConflictResponse({
+    type: ErrorResponseDto,
+    description: 'Des réservations actives tombent ce jour-là',
   })
   addClosedDate(@Body() dto: AddClosedDateDto): Promise<SettingsDto> {
     return this.settings.addClosedDate(dto);

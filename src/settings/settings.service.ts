@@ -5,7 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThanOrEqual, Repository } from 'typeorm';
+import { DataSource, In, MoreThanOrEqual, Repository } from 'typeorm';
+import { Reservation } from '../reservations/entities/reservation.entity';
+import { ACTIVE_STATUTS } from '../reservations/reservations.rules';
 import type {
   BookingRulesDto,
   LogoVariant,
@@ -64,6 +66,7 @@ const shippingErrors = ({ domicile, expedition }: ShippingDto) => [
 @Injectable()
 export class SettingsService {
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(Settings)
     private readonly settings: Repository<Settings>,
     @InjectRepository(ClosedDate)
@@ -165,10 +168,31 @@ export class SettingsService {
     if (date < todayKey()) {
       throw new BadRequestException(['Cette date est déjà passée']);
     }
-    await this.load();
-    await this.closedDates.save({
-      date,
-      motif: motif || 'Fermeture exceptionnelle',
+    await this.dataSource.transaction('READ COMMITTED', async (manager) => {
+      // Même verrou que la création d'une réservation : aucune ne peut se glisser ce jour-là
+      const settings = await manager.findOne(Settings, {
+        where: { id: SETTINGS_ID },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!settings) {
+        throw new NotFoundException("Le salon n'est pas encore configuré");
+      }
+      const active = await manager.find(Reservation, {
+        select: { reference: true, debut: true },
+        where: { date, statut: In(ACTIVE_STATUTS) },
+        order: { debut: 'ASC' },
+      });
+      if (active.length) {
+        throw new ConflictException(
+          `Ce jour-là compte encore ${active.length} réservation${active.length > 1 ? 's' : ''} ` +
+            `en attente ou confirmée${active.length > 1 ? 's' : ''} ` +
+            `(${active.map((r) => `${r.reference} à ${r.debut}`).join(', ')}) : refusez-les avant de fermer`,
+        );
+      }
+      await manager.save(ClosedDate, {
+        date,
+        motif: motif || 'Fermeture exceptionnelle',
+      });
     });
     return this.get();
   }

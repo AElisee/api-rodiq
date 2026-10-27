@@ -16,7 +16,12 @@ import { SessionsService } from './sessions/sessions.service';
   imports: [
     TypeOrmModule.forFeature([Account, Admin, Session]),
     // Connexion et inscription : 10 tentatives par minute et par adresse IP
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]),
+    // (les routes qui posent `@Throttle` ajustent la limite)
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60_000, limit: 10 }],
+      errorMessage:
+        'Trop de tentatives en peu de temps : réessayez dans une minute',
+    }),
   ],
   controllers: [AccountAuthController, AdminAuthController],
   providers: [

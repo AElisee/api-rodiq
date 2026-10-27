@@ -28,8 +28,8 @@ import {
 // Formes des réglages, communes aux réponses et aux corps des requêtes admin
 // (même structure que `lib/stores/settings-store.ts` du front, noms de champs en français)
 
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-const TIME_MESSAGE = 'Heure invalide (HH:mm)';
+export const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+export const TIME_MESSAGE = 'Heure invalide (HH:mm)';
 const URL_PATTERN = /^https?:\/\/\S+\.\S+/;
 
 // Une pause vide (« » ou null) équivaut à pas de pause

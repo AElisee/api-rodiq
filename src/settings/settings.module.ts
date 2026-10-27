@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Reservation } from '../reservations/entities/reservation.entity';
 import { AdminSettingsController } from './admin-settings.controller';
 import { ClosedDate } from './entities/closed-date.entity';
 import { Settings } from './entities/settings.entity';
@@ -7,7 +8,7 @@ import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Settings, ClosedDate])],
+  imports: [TypeOrmModule.forFeature([Settings, ClosedDate, Reservation])],
   controllers: [SettingsController, AdminSettingsController],
   providers: [SettingsService],
 })

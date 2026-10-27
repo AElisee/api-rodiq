@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import type {
   OrderDto,
   PrestationCategoryDto,
@@ -65,6 +65,11 @@ export class PrestationsService {
         precision: p.precision,
       })),
     }));
+  }
+
+  // Prestations désignées par une réservation (les identifiants inconnus sont absents du résultat)
+  findByIds(ids: string[]) {
+    return this.prestations.findBy({ id: In(ids) });
   }
 
   async createCategory({ nom, accroche }: SavePrestationCategoryDto) {
