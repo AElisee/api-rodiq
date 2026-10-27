@@ -3,9 +3,14 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { json, type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { SESSION_COOKIES } from './auth/auth.constants';
+import {
+  PRODUCT_CREATION_BODY_LIMIT,
+  PRODUCT_CREATION_PATH,
+} from './boutique/boutique.rules';
 
 const DOCS_DESCRIPTION = `
 Documentation de l'API RODIQ.
@@ -35,6 +40,23 @@ rien à faire de plus. Ou copier \`token\` dans « Authorize » (schéma \`clien
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Ajout d'un produit avec ses photos : seule route qui accepte un gros corps (4 Mo). Réservé aux
+  // requêtes qui portent un jeton admin (cookie ou en-tête) : un visiteur anonyme ne fait jamais
+  // lire 4 Mo au serveur. Le jeton est vérifié ensuite par le garde ; posé avant le parseur
+  // général, qui ne relit pas un corps déjà lu
+  const largeJson = json({ limit: PRODUCT_CREATION_BODY_LIMIT });
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const withAdminToken =
+      !!req.headers.authorization ||
+      req.headers.cookie?.includes(`${SESSION_COOKIES.admin}=`);
+    if (
+      req.method === 'POST' &&
+      req.path === PRODUCT_CREATION_PATH &&
+      withAdminToken
+    ) {
+      largeJson(req, res, next);
+    } else next();
+  });
   // Logos des réglages en data URL (500 Ko, soit ~700 Ko en base64) : au-delà des 100 Ko par défaut
   app.useBodyParser('json', { limit: '1mb' });
   // Toutes les routes sous /api (sans version), documentation comprise : /api/docs
