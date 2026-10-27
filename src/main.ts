@@ -12,7 +12,7 @@ Documentation de l'API RODIQ.
 
 ## Authentification
 
-**Toutes les routes exigent une session**, sauf la connexion, l'inscription, la déconnexion et la lecture des réglages (\`GET /api/settings\`).
+**Toutes les routes exigent une session**, sauf la connexion, l'inscription, la déconnexion et la lecture des réglages (\`GET /api/parametres\`) et de la carte des prestations (\`GET /api/prestations\`).
 
 Deux sessions **indépendantes**. À la connexion, l'API pose un cookie \`httpOnly\` et renvoie le même jeton
 dans le champ \`token\` de la réponse :
