@@ -1,4 +1,5 @@
 import {
+  applyDecorators,
   Body,
   Controller,
   Delete,
@@ -11,6 +12,8 @@ import {
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiConflictResponse,
+  ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -25,13 +28,14 @@ import {
   type LogoVariant,
   PlatformInfoDto,
   SettingsDto,
+  ShippingDto,
 } from './dto/settings.dto';
 import {
   AddClosedDateDto,
+  CreateSettingsDto,
   UpdateHoursDto,
   UpdateLogoDto,
   UpdateSalonDto,
-  UpdateShippingDto,
 } from './dto/update-settings.dto';
 import { SettingsService } from './settings.service';
 
@@ -47,10 +51,20 @@ const LogoVariantParam = () =>
       '`principal` (sur fond clair), `clair` (sur fond sombre) ou `icone` (carré)',
   });
 
-// Un point d'API par onglet de l'écran Réglages ; chaque réponse contient tous les réglages
+// Modification d'un onglet : possible une fois les réglages créés
+const TabUpdate = () =>
+  applyDecorators(
+    ApiOkResponse({ type: SettingsDto, description: 'Réglages à jour' }),
+    ApiNotFoundResponse({
+      type: ErrorResponseDto,
+      description: "Le salon n'est pas encore configuré",
+    }),
+  );
+
+// Création des réglages, puis un point d'API par onglet de l'écran Réglages ;
+// chaque réponse contient tous les réglages
 @ApiTags('Admin : réglages')
 @AdminOnly()
-@ApiOkResponse({ type: SettingsDto, description: 'Réglages à jour' })
 @ApiBadRequestResponse({
   type: ErrorResponseDto,
   description: 'Champs invalides',
@@ -59,7 +73,25 @@ const LogoVariantParam = () =>
 export class AdminSettingsController {
   constructor(private readonly settings: SettingsService) {}
 
+  @Post()
+  @ApiOperation({
+    summary: 'Configurer le salon',
+    description:
+      'Première configuration, à faire une seule fois : plateforme, horaires et créneaux, règles, ' +
+      'adresse, position et livraisons. Tant qu’elle n’est pas faite, `GET /parametres` répond 404. ' +
+      'Les logos et les fermetures s’ajoutent ensuite depuis leurs onglets.',
+  })
+  @ApiCreatedResponse({ type: SettingsDto, description: 'Réglages créés' })
+  @ApiConflictResponse({
+    type: ErrorResponseDto,
+    description: 'Les réglages existent déjà',
+  })
+  create(@Body() dto: CreateSettingsDto): Promise<SettingsDto> {
+    return this.settings.create(dto);
+  }
+
   @Put('plateforme')
+  @TabUpdate()
   @ApiOperation({
     summary: 'Plateforme : identité, contacts et réseaux sociaux',
     description:
@@ -72,6 +104,7 @@ export class AdminSettingsController {
   }
 
   @Put('logos/:variante')
+  @TabUpdate()
   @LogoVariantParam()
   @ApiOperation({
     summary: 'Plateforme : importer un logo',
@@ -86,6 +119,7 @@ export class AdminSettingsController {
   }
 
   @Delete('logos/:variante')
+  @TabUpdate()
   @LogoVariantParam()
   @ApiOperation({
     summary: 'Plateforme : retirer un logo',
@@ -99,6 +133,7 @@ export class AdminSettingsController {
   }
 
   @Put('horaires')
+  @TabUpdate()
   @ApiOperation({
     summary: 'Horaires et créneaux',
     description:
@@ -110,6 +145,7 @@ export class AdminSettingsController {
   }
 
   @Put('regles')
+  @TabUpdate()
   @ApiOperation({
     summary: 'Règles de réservation',
     description:
@@ -121,6 +157,7 @@ export class AdminSettingsController {
 
   @Post('fermetures')
   @HttpCode(HttpStatus.OK)
+  @TabUpdate()
   @ApiOperation({
     summary: 'Fermetures : ajouter un jour fermé',
     description:
@@ -134,6 +171,7 @@ export class AdminSettingsController {
   @Delete('fermetures/:date')
   @ApiParam({ name: 'date', example: '2026-12-25' })
   @ApiOperation({ summary: 'Fermetures : rouvrir un jour' })
+  @ApiOkResponse({ type: SettingsDto, description: 'Réglages à jour' })
   @ApiNotFoundResponse({
     type: ErrorResponseDto,
     description: 'Aucune fermeture ce jour-là',
@@ -143,6 +181,7 @@ export class AdminSettingsController {
   }
 
   @Put('salon')
+  @TabUpdate()
   @ApiOperation({
     summary: 'Salon : adresse et position',
     description:
@@ -153,24 +192,14 @@ export class AdminSettingsController {
   }
 
   @Put('livraisons')
+  @TabUpdate()
   @ApiOperation({
     summary: 'Livraisons et expéditions',
     description:
       'Remplace les communes livrées à domicile et les villes desservies par expédition, avec leurs frais ' +
       '(francs CFA). Une destination ne peut apparaître qu’une fois par liste (casse ignorée).',
   })
-  setShipping(@Body() dto: UpdateShippingDto): Promise<SettingsDto> {
+  setShipping(@Body() dto: ShippingDto): Promise<SettingsDto> {
     return this.settings.setShipping(dto);
-  }
-
-  @Post('reinitialiser')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Rétablir les valeurs par défaut',
-    description:
-      'Remet tous les onglets à leurs valeurs de départ, retire les logos et supprime les fermetures exceptionnelles.',
-  })
-  reset(): Promise<SettingsDto> {
-    return this.settings.reset();
   }
 }

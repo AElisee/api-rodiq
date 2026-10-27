@@ -1,4 +1,4 @@
-import { defaultSettings } from './settings.defaults';
+import type { DayHoursDto } from './dto/settings.dto';
 import {
   dataUrlBytes,
   duplicatePlaces,
@@ -6,13 +6,27 @@ import {
   weekErrors,
 } from './settings.rules';
 
+const weekday = (): DayHoursDto => ({
+  ouvert: true,
+  ouverture: '09:00',
+  fermeture: '19:00',
+  debutPause: '13:00',
+  finPause: '14:00',
+});
+
+// Dimanche fermé, lundi à samedi avec pause déjeuner
+const week = (): DayHoursDto[] => [
+  { ouvert: false, ouverture: '09:00', fermeture: '17:00' },
+  ...Array.from({ length: 6 }, weekday),
+];
+
 describe('règles des réglages', () => {
-  it('accepte la semaine par défaut', () => {
-    expect(weekErrors(defaultSettings().semaine)).toEqual([]);
+  it('accepte une semaine cohérente', () => {
+    expect(weekErrors(week())).toEqual([]);
   });
 
   it('refuse des horaires incohérents, jour par jour', () => {
-    const semaine = defaultSettings().semaine;
+    const semaine = week();
     semaine[1] = { ouvert: true, ouverture: '10:00', fermeture: '09:00' };
     semaine[2] = { ...semaine[2], finPause: undefined };
     semaine[3] = { ...semaine[3], debutPause: '08:00' };

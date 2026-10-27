@@ -1,6 +1,8 @@
 import { applyDecorators } from '@nestjs/common';
 import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEmail,
   IsInt,
@@ -230,6 +232,10 @@ export class GeoPointDto {
 
 export class SalonDto {
   /** Adresse affichée dans le pied de page @example "Cocody Angré, 7e tranche" */
+  @Transform(trim)
+  @IsString()
+  @MinLength(1, { message: "Indiquez l'adresse du salon" })
+  @MaxLength(255)
   adresse: string;
 }
 
@@ -249,7 +255,18 @@ export class ShippingRateDto {
 
 /** Livraison à domicile dans Abidjan et expédition vers les autres villes */
 export class ShippingDto {
+  /** Communes livrées à domicile (noms uniques) */
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => ShippingRateDto)
   domicile: ShippingRateDto[];
+
+  /** Villes desservies par expédition (noms uniques) */
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => ShippingRateDto)
   expedition: ShippingRateDto[];
 }
 

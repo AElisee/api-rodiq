@@ -9,7 +9,7 @@ import type {
 // Identifiant de l'unique ligne de la table
 export const SETTINGS_ID = 1;
 
-// Réglages du salon : une seule ligne, créée avec les valeurs par défaut à la première lecture
+// Réglages du salon : une seule ligne, créée par l'admin à la première configuration
 @Entity('parametres')
 export class Settings {
   @PrimaryColumn({ type: 'tinyint' })

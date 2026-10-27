@@ -12,14 +12,20 @@ import {
   Max,
   MaxLength,
   Min,
-  MinLength,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { trim } from '../../common/transforms';
-import { DayHoursDto, GeoPointDto, ShippingRateDto } from './settings.dto';
+import {
+  BookingRulesDto,
+  DayHoursDto,
+  GeoPointDto,
+  PlatformInfoDto,
+  SalonDto,
+  ShippingDto,
+} from './settings.dto';
 
-// Corps des requêtes admin : un par onglet de l'écran Réglages
+// Corps des requêtes admin : la création, puis un par onglet de l'écran Réglages
 
 export const SLOT_DURATIONS = [30, 45, 60, 90, 120, 150, 180];
 
@@ -73,34 +79,37 @@ export class AddClosedDateDto {
 }
 
 /** Onglet « Salon et position » */
-export class UpdateSalonDto {
-  /** @example "Cocody Angré, 7e tranche" */
-  @Transform(trim)
-  @IsString()
-  @MinLength(1, { message: "Indiquez l'adresse du salon" })
-  @MaxLength(255)
-  adresse: string;
-
+export class UpdateSalonDto extends SalonDto {
   @ValidateNested()
   @Type(() => GeoPointDto)
   position: GeoPointDto;
 }
 
-/** Onglet « Livraisons et expéditions » : remplace les deux listes */
-export class UpdateShippingDto {
-  /** Communes livrées à domicile (noms uniques) */
-  @IsArray()
-  @ArrayMaxSize(100)
-  @ValidateNested({ each: true })
-  @Type(() => ShippingRateDto)
-  domicile: ShippingRateDto[];
+/**
+ * Première configuration : mêmes champs que la lecture des réglages, sans les logos
+ * ni les fermetures (ajoutés ensuite depuis leurs onglets)
+ */
+export class CreateSettingsDto extends UpdateHoursDto {
+  @ValidateNested()
+  @Type(() => BookingRulesDto)
+  regles: BookingRulesDto;
 
-  /** Villes desservies par expédition (noms uniques) */
-  @IsArray()
-  @ArrayMaxSize(100)
-  @ValidateNested({ each: true })
-  @Type(() => ShippingRateDto)
-  expedition: ShippingRateDto[];
+  @ValidateNested()
+  @Type(() => PlatformInfoDto)
+  plateforme: PlatformInfoDto;
+
+  @ValidateNested()
+  @Type(() => SalonDto)
+  salon: SalonDto;
+
+  @ValidateNested()
+  @Type(() => GeoPointDto)
+  position: GeoPointDto;
+
+  /** Listes vides acceptées : à compléter plus tard */
+  @ValidateNested()
+  @Type(() => ShippingDto)
+  livraisons: ShippingDto;
 }
 
 /** Onglet « Plateforme » : import d'un logo */
