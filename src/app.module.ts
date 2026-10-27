@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { BoutiqueModule } from './boutique/boutique.module';
+import { CommandesModule } from './commandes/commandes.module';
 import { PrestationsModule } from './prestations/prestations.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { SettingsModule } from './settings/settings.module';
@@ -29,6 +30,7 @@ import { SettingsModule } from './settings/settings.module';
     PrestationsModule,
     ReservationsModule,
     BoutiqueModule,
+    CommandesModule,
   ],
 })
 export class AppModule {}
