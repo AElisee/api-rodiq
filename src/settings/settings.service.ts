@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, MoreThanOrEqual, Repository } from 'typeorm';
@@ -64,7 +65,7 @@ const shippingErrors = ({ domicile, expedition }: ShippingDto) => [
 
 // Chaque écriture renvoie l'ensemble des réglages, pour que le front remplace son état d'un coup
 @Injectable()
-export class SettingsService {
+export class SettingsService implements OnModuleInit {
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(Settings)
@@ -72,6 +73,20 @@ export class SettingsService {
     @InjectRepository(ClosedDate)
     private readonly closedDates: Repository<ClosedDate>,
   ) {}
+
+  // Délai d'annulation enregistré en jours avant le passage en heures : le convertir une fois
+  async onModuleInit() {
+    const settings = await this.settings.findOneBy({ id: SETTINGS_ID });
+    const { delaiAnnulationJours, ...regles } = (settings?.regles ??
+      {}) as BookingRulesDto & { delaiAnnulationJours?: number };
+    if (!settings || delaiAnnulationJours === undefined) return;
+    await this.settings.update(SETTINGS_ID, {
+      regles: {
+        ...regles,
+        delaiAnnulationHeures: delaiAnnulationJours * 24 || null,
+      },
+    });
+  }
 
   async get(): Promise<SettingsDto> {
     const [settings, closedDates] = await Promise.all([

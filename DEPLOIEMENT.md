@@ -44,11 +44,13 @@ Choisir une option :
 
 ### 1.3 Proxy
 
-Derrière Nginx ou Passenger, activer `trust proxy`, pour que l'IP réelle soit vue par le rate-limit (`ThrottlerGuard`) :
+Derrière Nginx ou Passenger, définir dans `.env` le nombre de proxys placés devant l'API :
 
-```ts
-app.set('trust proxy', 1); // dans main.ts
+```bash
+TRUST_PROXY=1
 ```
+
+Sans ce réglage, l'API voit l'adresse du proxy à la place de celle du visiteur : le rate-limit (`ThrottlerGuard`) traiterait tout le monde comme une seule adresse, et le compteur de visites ne compterait qu'**un visiteur par jour et par navigateur**. Ne pas le définir sans proxy : l'en-tête `X-Forwarded-For` serait alors falsifiable.
 
 ### 1.4 Vérifier le build en local
 
@@ -120,6 +122,8 @@ DB_USER=rodiq
 DB_PASSWORD=<mot de passe fort>
 
 FRONT_URL=https://rodiq.ci
+# Nombre de proxys devant l'API (voir 1.3)
+TRUST_PROXY=1
 
 ADMIN_EMAIL=<email admin>
 ADMIN_PASSWORD=<mot de passe fort>

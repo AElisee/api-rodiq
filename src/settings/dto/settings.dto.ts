@@ -60,11 +60,17 @@ export class BookingRulesDto {
   delaiMinimumHeures: number;
 
   /**
-   * Annulation en ligne possible jusqu'à N jours avant le rendez-vous (0 à 30)
-   * @example 2
+   * Annulation en ligne possible jusqu'à N heures avant le début du rendez-vous (1 à 720, soit 30 jours).
+   * null = sans délai : annulable jusqu'au début du rendez-vous
+   * @example 48
    */
-  @IntBetween(0, 30, "Délai d'annulation : entre 0 et 30 jours")
-  delaiAnnulationJours: number;
+  @ValidateIf((_, value) => value !== null)
+  @IntBetween(
+    1,
+    720,
+    "Délai d'annulation : entre 1 heure et 30 jours, ou vide pour permettre l'annulation à tout moment",
+  )
+  delaiAnnulationHeures: number | null;
 }
 
 /** Horaires d'un jour de la semaine */

@@ -17,7 +17,7 @@ Documentation de l'API RODIQ.
 
 ## Authentification
 
-**Toutes les routes exigent une session**, sauf la connexion, l'inscription, la déconnexion et la lecture des réglages (\`GET /api/parametres\`), de la carte des prestations (\`GET /api/prestations\`) et des créneaux (\`GET /api/creneaux\`). Réserver exige un compte client.
+**Toutes les routes exigent une session**, sauf la connexion, l'inscription, la déconnexion et la lecture des réglages (\`GET /api/parametres\`), de la carte des prestations (\`GET /api/prestations\`), des créneaux (\`GET /api/creneaux\`) et de la boutique (\`GET /api/boutique/*\`), ainsi que le comptage des visites (\`POST /api/visites\`). Réserver exige un compte client.
 
 Deux sessions **indépendantes**. À la connexion, l'API pose un cookie \`httpOnly\` et renvoie le même jeton
 dans le champ \`token\` de la réponse :
@@ -40,6 +40,10 @@ rien à faire de plus. Ou copier \`token\` dans « Authorize » (schéma \`clien
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Derrière Nginx/Passenger : nombre de proxys devant l'API, pour lire l'IP réelle dans
+  // X-Forwarded-For (limites par IP, visiteurs uniques). Jamais sans proxy : l'en-tête serait falsifiable
+  const trustProxy = Number(process.env.TRUST_PROXY ?? 0);
+  if (trustProxy > 0) app.set('trust proxy', trustProxy);
   // Ajout d'un produit avec ses photos : seule route qui accepte un gros corps (4 Mo). Réservé aux
   // requêtes qui portent un jeton admin (cookie ou en-tête) : un visiteur anonyme ne fait jamais
   // lire 4 Mo au serveur. Le jeton est vérifié ensuite par le garde ; posé avant le parseur

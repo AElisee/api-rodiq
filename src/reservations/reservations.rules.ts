@@ -59,6 +59,16 @@ const weekdayFormat = new Intl.DateTimeFormat('fr-FR', {
 /** « lundi 3 novembre 2026 » */
 export const formatDay = (key: string) => dayFormat.format(dayStart(key));
 
+const timeFormat = new Intl.DateTimeFormat('fr-FR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'UTC',
+});
+
+/** « lundi 3 novembre 2026 à 14:00 » */
+export const formatDayTime = (instant: Date) =>
+  `${dayFormat.format(instant)} à ${timeFormat.format(instant)}`;
+
 const toMinutes = (time: string) => {
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
@@ -180,18 +190,27 @@ export const findSlot = (
   return { slot: { date, ...time } };
 };
 
-/** Dernier jour (inclus) où la cliente peut annuler elle-même (comme `cancellationDeadline` du front) */
-export const cancellationDeadline = (date: string, noticeDays: number) =>
-  addDays(date, -noticeDays);
+/**
+ * Dernier instant (exclu) où la cliente peut annuler elle-même : début du rendez-vous moins le délai.
+ * `noticeHours` null = sans délai, jusqu'au début du rendez-vous
+ */
+export const cancellationDeadline = (
+  reservation: { date: string; debut: string },
+  noticeHours: number | null,
+) =>
+  new Date(
+    slotStart(reservation.date, reservation.debut).getTime() -
+      (noticeHours ?? 0) * HOUR_MS,
+  );
 
-/** Annulation en ligne possible (comme `canCancel` du front) */
+/** Annulation en ligne possible */
 export const canCancel = (
-  reservation: { statut: Statut; date: string },
-  noticeDays: number,
+  reservation: { statut: Statut; date: string; debut: string },
+  noticeHours: number | null,
   now = new Date(),
 ) =>
   isActive(reservation.statut) &&
-  dayKey(now) <= cancellationDeadline(reservation.date, noticeDays);
+  now.getTime() < cancellationDeadline(reservation, noticeHours).getTime();
 
 // Référence courte communiquée à la cliente, sans caractères ambigus (0/O, 1/I)
 const REFERENCE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

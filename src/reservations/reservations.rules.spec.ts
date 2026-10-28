@@ -24,7 +24,7 @@ const schedule = (): Schedule => ({
   regles: {
     fenetreReservationJours: 7,
     delaiMinimumHeures: 12,
-    delaiAnnulationJours: 2,
+    delaiAnnulationHeures: 48,
   },
   semaine: [
     { ouvert: false, ouverture: '09:00', fermeture: '17:00' },
@@ -107,10 +107,26 @@ describe('règles des réservations', () => {
   });
 
   it('autorise l’annulation jusqu’au délai, pour une réservation active', () => {
-    const r = { statut: 'confirmee' as const, date: '2026-11-04' };
-    expect(canCancel(r, 2, now)).toBe(true);
-    expect(canCancel(r, 2, new Date('2026-11-03T08:00:00Z'))).toBe(false);
-    expect(canCancel({ ...r, statut: 'refusee' }, 2, now)).toBe(false);
+    const r = {
+      statut: 'confirmee' as const,
+      date: '2026-11-04',
+      debut: '10:00',
+    };
+    expect(canCancel(r, 48, new Date('2026-11-02T09:59:00Z'))).toBe(true);
+    expect(canCancel(r, 48, new Date('2026-11-02T10:00:00Z'))).toBe(false);
+    expect(canCancel(r, 6, new Date('2026-11-04T03:59:00Z'))).toBe(true);
+    expect(canCancel(r, 6, new Date('2026-11-04T04:00:00Z'))).toBe(false);
+    expect(canCancel({ ...r, statut: 'refusee' }, 48, now)).toBe(false);
+  });
+
+  it('sans délai, autorise l’annulation jusqu’au début du rendez-vous', () => {
+    const r = {
+      statut: 'en_attente' as const,
+      date: '2026-11-04',
+      debut: '10:00',
+    };
+    expect(canCancel(r, null, new Date('2026-11-04T09:59:00Z'))).toBe(true);
+    expect(canCancel(r, null, new Date('2026-11-04T10:00:00Z'))).toBe(false);
   });
 
   it('génère des références sans caractères ambigus', () => {

@@ -41,6 +41,7 @@ import {
   escapeLike,
   findSlot,
   formatDay,
+  formatDayTime,
   linesTotal,
   MAX_ACTIVE_RESERVATIONS,
   newReference,
@@ -83,11 +84,11 @@ const toDto = (r: Reservation): ReservationDto => ({
 
 const toClientDto = (
   r: Reservation,
-  noticeDays: number,
+  noticeHours: number | null,
 ): ReservationClienteDto => ({
   ...toDto(r),
-  annulable: canCancel(r, noticeDays),
-  dateLimiteAnnulation: cancellationDeadline(r.date, noticeDays),
+  annulable: canCancel(r, noticeHours),
+  dateLimiteAnnulation: cancellationDeadline(r, noticeHours).toISOString(),
 });
 
 const toAdminDto = (r: Reservation): ReservationAdminDto => ({
@@ -195,7 +196,7 @@ export class ReservationsService implements OnModuleInit {
 
     // READ COMMITTED : après le verrou des réglages, les comptages voient les réservations
     // validées entre-temps par une autre requête
-    const { reservation, noticeDays } = await this.dataSource.transaction(
+    const { reservation, noticeHours } = await this.dataSource.transaction(
       'READ COMMITTED',
       async (manager) => {
         // Verrou de la ligne des réglages : les réservations passent une à une, deux clientes ne
@@ -281,11 +282,11 @@ export class ReservationsService implements OnModuleInit {
         );
         return {
           reservation: await manager.findOneByOrFail(Reservation, { id }),
-          noticeDays: settings.regles.delaiAnnulationJours,
+          noticeHours: settings.regles.delaiAnnulationHeures,
         };
       },
     );
-    return toClientDto(reservation, noticeDays);
+    return toClientDto(reservation, noticeHours);
   }
 
   // Réservations de la cliente connectée, la plus récente d'abord
@@ -298,7 +299,7 @@ export class ReservationsService implements OnModuleInit {
       }),
     ]);
     return reservations.map((r) =>
-      toClientDto(r, settings.regles.delaiAnnulationJours),
+      toClientDto(r, settings.regles.delaiAnnulationHeures),
     );
   }
 
@@ -315,11 +316,11 @@ export class ReservationsService implements OnModuleInit {
       );
     }
     const settings = await this.loadSettings();
-    const noticeDays = settings.regles.delaiAnnulationJours;
+    const noticeHours = settings.regles.delaiAnnulationHeures;
     this.assertStatus(reservation, ACTIVE_STATUTS, 'annulée');
-    if (!canCancel(reservation, noticeDays)) {
+    if (!canCancel(reservation, noticeHours)) {
       throw new ConflictException(
-        `L’annulation en ligne était possible jusqu’au ${formatDay(cancellationDeadline(reservation.date, noticeDays))} : ` +
+        `L’annulation en ligne était possible jusqu’au ${formatDayTime(cancellationDeadline(reservation, noticeHours))} : ` +
           'contactez le salon pour annuler ce rendez-vous',
       );
     }
@@ -332,7 +333,7 @@ export class ReservationsService implements OnModuleInit {
         motifAnnulation: motif || null,
       },
     );
-    return toClientDto(updated, noticeDays);
+    return toClientDto(updated, noticeHours);
   }
 
   async list({

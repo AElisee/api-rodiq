@@ -115,7 +115,7 @@ export class ReservationsController {
     summary: 'Annuler ma réservation',
     description:
       'Possible pour une réservation en attente ou confirmée, au plus tard `dateLimiteAnnulation` ' +
-      '(délai d’annulation des réglages). Le motif est facultatif et transmis au salon.',
+      '(début du rendez-vous moins le délai d’annulation des réglages). Le motif est facultatif et transmis au salon.',
   })
   @ApiOkResponse({ type: ReservationClienteDto })
   @ApiBadRequestResponse({

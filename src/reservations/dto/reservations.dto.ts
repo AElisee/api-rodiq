@@ -151,8 +151,9 @@ export class ReservationClienteDto extends ReservationDto {
   annulable: boolean;
 
   /**
-   * Dernier jour (inclus) où l'annulation en ligne est possible
-   * @example "2026-11-01"
+   * Instant (exclu) jusqu'auquel l'annulation en ligne est possible : début du rendez-vous moins le délai
+   * d'annulation des réglages (sans délai : le début du rendez-vous)
+   * @example "2026-11-01T14:00:00.000Z"
    */
   dateLimiteAnnulation: string;
 }
