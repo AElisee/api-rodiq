@@ -57,6 +57,10 @@ export class Reservation {
   @Column('json')
   lignes: LigneReservationDto[];
 
+  // Somme des prix des lignes en francs CFA, figée avec elles (tri et dépenses de l'écran Clientèle)
+  @Column({ type: 'int', unsigned: true, default: 0 })
+  total: number;
+
   // Coordonnées copiées du compte à la réservation
   @Column({ length: 80 })
   prenom: string;

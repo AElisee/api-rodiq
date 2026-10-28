@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { normalizeSearch } from '../../reservations/reservations.rules';
 
 // Compte client (inscription sur le site)
 @Entity('accounts')
@@ -33,9 +34,29 @@ export class Account {
   @Column({ select: false })
   passwordHash: string;
 
+  // Nom, téléphones et e-mail normalisés (`normalizeSearch`) pour la recherche de l'écran Clientèle
+  @Column({ length: 500, default: '', select: false })
+  recherche: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
 }
+
+export const accountSearchText = (
+  account: Pick<
+    Account,
+    'firstName' | 'lastName' | 'phone' | 'whatsapp' | 'email'
+  >,
+) =>
+  normalizeSearch(
+    [
+      account.firstName,
+      account.lastName,
+      account.phone,
+      account.whatsapp ?? '',
+      account.email,
+    ].join(''),
+  );

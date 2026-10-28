@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  OnModuleInit,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -40,6 +41,7 @@ import {
   escapeLike,
   findSlot,
   formatDay,
+  linesTotal,
   MAX_ACTIVE_RESERVATIONS,
   newReference,
   normalizeSearch,
@@ -62,7 +64,7 @@ const toDto = (r: Reservation): ReservationDto => ({
   fin: r.fin,
   statut: r.statut,
   lignes: r.lignes,
-  total: r.lignes.reduce((sum, line) => sum + line.prix, 0),
+  total: r.total,
   totalAPartirDe: r.lignes.some((line) => line.prixAPartirDe),
   contact: {
     prenom: r.prenom,
@@ -110,7 +112,7 @@ const ORDERS = {
 } as const;
 
 @Injectable()
-export class ReservationsService {
+export class ReservationsService implements OnModuleInit {
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(Reservation)
@@ -123,6 +125,18 @@ export class ReservationsService {
     private readonly closedDates: Repository<ClosedDate>,
     private readonly prestations: PrestationsService,
   ) {}
+
+  // Réservations créées avant la colonne `total` : la calculer une fois depuis leurs lignes figées
+  async onModuleInit() {
+    const missing = await this.reservations.find({
+      select: { id: true, lignes: true },
+      where: { total: 0 },
+    });
+    for (const { id, lignes } of missing) {
+      const total = linesTotal(lignes);
+      if (total > 0) await this.reservations.update(id, { total });
+    }
+  }
 
   // Créneaux de la fenêtre avec leurs places libres : seuls des nombres, jamais d'identité
   async slots(): Promise<CreneauDto[]> {
@@ -242,6 +256,7 @@ export class ReservationsService {
             ...slot,
             statut: 'en_attente',
             lignes,
+            total: linesTotal(lignes),
             prenom: account.firstName,
             nom: account.lastName,
             telephone: account.phone,

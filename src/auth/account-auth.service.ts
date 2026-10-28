@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { SignInDto } from './dto/sign-in.dto';
 import type { SignUpDto } from './dto/sign-up.dto';
-import { Account } from './entities/account.entity';
+import { Account, accountSearchText } from './entities/account.entity';
 import { hashPassword, verifyPassword } from './passwords';
 
 @Injectable()
@@ -21,10 +21,11 @@ export class AccountAuthService {
       throw new ConflictException('Cette adresse e-mail est déjà utilisée');
     }
     // TODO réservations / commandes : rattacher l'historique passé sans compte avec le même e-mail
+    const account = { ...data, whatsapp: whatsapp ?? null };
     return this.accounts.save(
       this.accounts.create({
-        ...data,
-        whatsapp: whatsapp ?? null,
+        ...account,
+        recherche: accountSearchText(account),
         passwordHash: await hashPassword(password),
       }),
     );

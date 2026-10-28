@@ -207,6 +207,10 @@ export const normalizeSearch = (text: string) =>
     .toLowerCase()
     .replace(/\s+/g, '');
 
+/** Montant estimé : somme des prix figés des lignes */
+export const linesTotal = (lignes: { prix: number }[]) =>
+  lignes.reduce((sum, line) => sum + line.prix, 0);
+
 /** Échappe les jokers de LIKE pour chercher le texte tel quel */
 export const escapeLike = (text: string) => text.replace(/[\\%_]/g, '\\$&');
 

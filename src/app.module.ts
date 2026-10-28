@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { BoutiqueModule } from './boutique/boutique.module';
 import { CommandesModule } from './commandes/commandes.module';
+import { ComptesModule } from './comptes/comptes.module';
 import { PrestationsModule } from './prestations/prestations.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { SettingsModule } from './settings/settings.module';
@@ -31,6 +32,7 @@ import { SettingsModule } from './settings/settings.module';
     ReservationsModule,
     BoutiqueModule,
     CommandesModule,
+    ComptesModule,
   ],
 })
 export class AppModule {}
