@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { AdminOnly } from '../auth/sessions/auth.decorators';
 import { ErrorResponseDto } from '../common/error-response.dto';
+import { Journaliser, texte } from '../journal/journal.decorator';
 import { CommandesService } from './commandes.service';
 import {
   AdminCancelCommandeDto,
@@ -27,6 +28,12 @@ import {
   CommandesPageDto,
   CommandesQueryDto,
 } from './dto/commandes.dto';
+
+const cible = ({ reponse }: { reponse?: CommandeAdminDto }) => ({
+  type: 'commande' as const,
+  id: reponse?.id,
+  libelle: reponse?.reference,
+});
 
 const CommandeParam = () =>
   ApiParam({ name: 'id', description: 'Identifiant de la commande' });
@@ -83,6 +90,7 @@ export class AdminCommandesController {
   @Post(':id/accepter')
   @Transition('La commande n’est plus en attente')
   @ApiOperation({ summary: 'Accepter une commande (préparation)' })
+  @Journaliser('commande.acceptee', { cible })
   accept(@Param('id') id: string): Promise<CommandeAdminDto> {
     return this.commandes.accept(id);
   }
@@ -92,6 +100,7 @@ export class AdminCommandesController {
   @ApiOperation({
     summary: 'Marquer la commande expédiée (livraison) ou prête au retrait',
   })
+  @Journaliser('commande.prete', { cible })
   markReady(@Param('id') id: string): Promise<CommandeAdminDto> {
     return this.commandes.markReady(id);
   }
@@ -103,6 +112,7 @@ export class AdminCommandesController {
     description:
       'Un paiement en espèces est alors marqué encaissé ; un Mobile Money non reçu reste à encaisser.',
   })
+  @Journaliser('commande.remise', { cible })
   deliver(@Param('id') id: string): Promise<CommandeAdminDto> {
     return this.commandes.deliver(id);
   }
@@ -110,6 +120,10 @@ export class AdminCommandesController {
   @Post(':id/encaisser')
   @Transition('Commande déjà payée ou annulée')
   @ApiOperation({ summary: 'Marquer le paiement reçu' })
+  @Journaliser<CommandeAdminDto>('commande.encaissee', {
+    cible,
+    detail: ({ reponse }) => reponse && `${reponse.total} FCFA`,
+  })
   markPaid(@Param('id') id: string): Promise<CommandeAdminDto> {
     return this.commandes.markPaid(id);
   }
@@ -121,6 +135,10 @@ export class AdminCommandesController {
     description:
       'Possible en attente ou en préparation ; le stock est rendu. Le motif est obligatoire et ' +
       'affiché à la cliente. Une commande déjà payée reste marquée payée (remboursement à prévoir).',
+  })
+  @Journaliser('commande.annulee', {
+    cible,
+    detail: ({ corps }) => texte(corps?.motif),
   })
   cancel(
     @Param('id') id: string,

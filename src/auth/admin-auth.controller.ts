@@ -21,14 +21,20 @@ import {
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { ErrorResponseDto } from '../common/error-response.dto';
+import { Journaliser, texte } from '../journal/journal.decorator';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminDto, AdminSessionDto } from './dto/admin.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { AdminOnly, Public } from './sessions/auth.decorators';
 import { CurrentSession } from './sessions/current-session.decorator';
 import type { Session } from './sessions/session.entity';
-import { extractSessionToken } from './sessions/session.guard';
+import {
+  type AuthenticatedRequest,
+  extractSessionToken,
+} from './sessions/session.guard';
 import { SessionsService } from './sessions/sessions.service';
+
+const ESPACE = { type: 'espace', id: 'admin', libelle: 'Admin' } as const;
 
 // Toutes les routes de ce contrôleur exigent la session admin, sauf celles marquées @Public()
 @ApiTags('Admin : authentification')
@@ -43,6 +49,14 @@ export class AdminAuthController {
   @Post('auth/sign-in')
   @HttpCode(HttpStatus.OK)
   @Public()
+  @Journaliser<AdminSessionDto>('connexion.reussie', {
+    acteur: ({ reponse, corps }) =>
+      reponse
+        ? { type: 'admin', id: reponse.id, nom: reponse.email }
+        : { type: 'anonyme', nom: texte(corps?.email)?.toLowerCase() },
+    cible: () => ESPACE,
+    refus: true,
+  })
   @UseGuards(ThrottlerGuard)
   @ApiOperation({
     summary: 'Se connecter (admin)',
@@ -75,6 +89,10 @@ export class AdminAuthController {
   @Post('auth/sign-out')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Public()
+  @Journaliser('deconnexion', {
+    cible: () => ESPACE,
+    si: ({ req }) => !!req.session,
+  })
   @ApiOperation({
     summary: 'Se déconnecter (admin)',
     description:
@@ -87,7 +105,9 @@ export class AdminAuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { token } = extractSessionToken(req, 'admin');
-    await this.sessions.close('admin', token, res);
+    const session = await this.sessions.close('admin', token, res);
+    // Route publique : la session fermée est posée sur la requête pour nommer l'auteur au journal
+    if (session) (req as AuthenticatedRequest).session = session;
   }
 
   @Get('me')

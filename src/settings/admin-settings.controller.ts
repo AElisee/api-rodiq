@@ -23,6 +23,11 @@ import {
 import { AdminOnly } from '../auth/sessions/auth.decorators';
 import { ErrorResponseDto } from '../common/error-response.dto';
 import {
+  type CibleJournal,
+  Journaliser,
+  texte,
+} from '../journal/journal.decorator';
+import {
   BookingRulesDto,
   LOGO_VARIANTS,
   type LogoVariant,
@@ -51,6 +56,19 @@ const LogoVariantParam = () =>
       '`principal` (sur fond clair), `clair` (sur fond sombre) ou `icone` (carré)',
   });
 
+// Onglet de l'écran Réglages touché par l'action
+const onglet = (libelle: string): CibleJournal => ({
+  type: 'reglages',
+  id: null,
+  libelle,
+});
+
+const LIBELLES_LOGO: Record<string, string> = {
+  principal: 'Logo principal',
+  clair: 'Logo sur fond sombre',
+  icone: 'Icône',
+};
+
 // Modification d'un onglet : possible une fois les réglages créés
 const TabUpdate = () =>
   applyDecorators(
@@ -74,6 +92,7 @@ export class AdminSettingsController {
   constructor(private readonly settings: SettingsService) {}
 
   @Post()
+  @Journaliser('reglages.crees', { cible: () => onglet('Réglages') })
   @ApiOperation({
     summary: 'Configurer le salon',
     description:
@@ -91,6 +110,7 @@ export class AdminSettingsController {
   }
 
   @Put('plateforme')
+  @Journaliser('reglages.plateforme', { cible: () => onglet('Plateforme') })
   @TabUpdate()
   @ApiOperation({
     summary: 'Plateforme : identité, contacts et réseaux sociaux',
@@ -104,6 +124,9 @@ export class AdminSettingsController {
   }
 
   @Put('logos/:variante')
+  @Journaliser('reglages.logo.importe', {
+    cible: ({ params }) => onglet(LIBELLES_LOGO[params.variante]),
+  })
   @TabUpdate()
   @LogoVariantParam()
   @ApiOperation({
@@ -119,6 +142,9 @@ export class AdminSettingsController {
   }
 
   @Delete('logos/:variante')
+  @Journaliser('reglages.logo.retire', {
+    cible: ({ params }) => onglet(LIBELLES_LOGO[params.variante]),
+  })
   @TabUpdate()
   @LogoVariantParam()
   @ApiOperation({
@@ -133,6 +159,7 @@ export class AdminSettingsController {
   }
 
   @Put('horaires')
+  @Journaliser('reglages.horaires', { cible: () => onglet('Horaires') })
   @TabUpdate()
   @ApiOperation({
     summary: 'Horaires et créneaux',
@@ -145,6 +172,7 @@ export class AdminSettingsController {
   }
 
   @Put('regles')
+  @Journaliser('reglages.regles', { cible: () => onglet('Règles') })
   @TabUpdate()
   @ApiOperation({
     summary: 'Règles de réservation',
@@ -156,6 +184,10 @@ export class AdminSettingsController {
   }
 
   @Post('fermetures')
+  @Journaliser('reglages.fermeture.ajoutee', {
+    cible: ({ corps }) => onglet(`Fermeture du ${texte(corps?.date)}`),
+    detail: ({ corps }) => texte(corps?.motif),
+  })
   @HttpCode(HttpStatus.OK)
   @TabUpdate()
   @ApiOperation({
@@ -174,6 +206,9 @@ export class AdminSettingsController {
   }
 
   @Delete('fermetures/:date')
+  @Journaliser('reglages.fermeture.retiree', {
+    cible: ({ params }) => onglet(`Fermeture du ${params.date}`),
+  })
   @ApiParam({ name: 'date', example: '2026-12-25' })
   @ApiOperation({ summary: 'Fermetures : rouvrir un jour' })
   @ApiOkResponse({ type: SettingsDto, description: 'Réglages à jour' })
@@ -186,6 +221,7 @@ export class AdminSettingsController {
   }
 
   @Put('salon')
+  @Journaliser('reglages.salon', { cible: () => onglet('Salon') })
   @TabUpdate()
   @ApiOperation({
     summary: 'Salon : adresse et position',
@@ -197,6 +233,7 @@ export class AdminSettingsController {
   }
 
   @Put('livraisons')
+  @Journaliser('reglages.livraisons', { cible: () => onglet('Livraisons') })
   @TabUpdate()
   @ApiOperation({
     summary: 'Livraisons et expéditions',

@@ -68,11 +68,17 @@ export class SessionsService {
     return session;
   }
 
-  /** Ferme la session liée au jeton (s'il y en a une) et efface le cookie */
+  /**
+   * Ferme la session liée au jeton (s'il y en a une) et efface le cookie.
+   * Renvoie la session fermée, ou null s'il n'y en avait pas
+   */
   async close(kind: SessionKind, token: string | undefined, res: Response) {
-    if (token)
-      await this.sessions.delete({ kind, tokenHash: hashToken(token) });
+    const session = token
+      ? await this.sessions.findOneBy({ kind, tokenHash: hashToken(token) })
+      : null;
+    if (session) await this.sessions.delete(session.id);
     this.clearCookie(kind, res);
+    return session;
   }
 
   clearCookie(kind: SessionKind, res: Response) {

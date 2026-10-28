@@ -24,6 +24,7 @@ import { ClientOnly, Public } from '../auth/sessions/auth.decorators';
 import { CurrentSession } from '../auth/sessions/current-session.decorator';
 import type { Session } from '../auth/sessions/session.entity';
 import { ErrorResponseDto } from '../common/error-response.dto';
+import { Journaliser, texte } from '../journal/journal.decorator';
 import {
   CancelReservationDto,
   CreateReservationDto,
@@ -32,6 +33,12 @@ import {
 } from './dto/reservations.dto';
 import { MAX_ACTIVE_RESERVATIONS } from './reservations.rules';
 import { ReservationsService } from './reservations.service';
+
+const cible = ({ reponse }: { reponse?: ReservationClienteDto }) => ({
+  type: 'reservation' as const,
+  id: reponse?.id,
+  libelle: reponse?.reference,
+});
 
 // Côté site : créneaux (public), puis réservation, liste et annulation par la cliente connectée
 @ApiTags('Réservations')
@@ -58,6 +65,11 @@ export class ReservationsController {
 
   @Post('reservations')
   @ClientOnly()
+  @Journaliser<ReservationClienteDto>('reservation.creee', {
+    cible,
+    detail: ({ reponse }) =>
+      reponse && `Rendez-vous le ${reponse.date} à ${reponse.debut}`,
+  })
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({
@@ -110,6 +122,10 @@ export class ReservationsController {
   @Post('me/reservations/:id/annuler')
   @HttpCode(HttpStatus.OK)
   @ClientOnly()
+  @Journaliser<ReservationClienteDto>('reservation.annulee', {
+    cible,
+    detail: ({ corps }) => texte(corps?.motif),
+  })
   @ApiParam({ name: 'id', description: 'Identifiant de la réservation' })
   @ApiOperation({
     summary: 'Annuler ma réservation',

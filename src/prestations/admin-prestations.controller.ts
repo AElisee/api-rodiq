@@ -12,12 +12,34 @@ import {
 import { AdminOnly } from '../auth/sessions/auth.decorators';
 import { ErrorResponseDto } from '../common/error-response.dto';
 import {
+  type ContexteJournal,
+  Journaliser,
+  nomAvant,
+  texte,
+} from '../journal/journal.decorator';
+import {
   OrderDto,
   PrestationCategoryDto,
   SavePrestationCategoryDto,
   SavePrestationDto,
 } from './dto/prestations.dto';
+import { PrestationCategory } from './entities/prestation-category.entity';
+import { Prestation } from './entities/prestation.entity';
 import { PrestationsService } from './prestations.service';
+
+// Les réponses contiennent toute la carte : la cible est nommée d'après le corps, ou lue avant une
+// suppression
+const categorie = ({ params, corps, avant }: ContexteJournal) => ({
+  type: 'categorie_prestations' as const,
+  id: params.id,
+  libelle: avant ?? texte(corps?.nom),
+});
+
+const prestation = ({ params, corps, avant }: ContexteJournal) => ({
+  type: 'prestation' as const,
+  id: params.id,
+  libelle: avant ?? texte(corps?.nom),
+});
 
 const Catalogue = (description = 'Carte à jour') =>
   ApiOkResponse({ type: [PrestationCategoryDto], description });
@@ -56,6 +78,7 @@ export class AdminPrestationsController {
   constructor(private readonly prestations: PrestationsService) {}
 
   @Post('categories')
+  @Journaliser('prestation.categorie.ajoutee', { cible: categorie })
   @Created()
   @DuplicateName()
   @ApiOperation({
@@ -70,6 +93,7 @@ export class AdminPrestationsController {
 
   // Déclarée avant `categories/:id` : « ordre » n'est jamais un identifiant de catégorie
   @Put('categories/ordre')
+  @Journaliser('prestation.categories.ordonnees')
   @Catalogue()
   @ApiOperation({
     summary: 'Réordonner les catégories',
@@ -81,6 +105,7 @@ export class AdminPrestationsController {
   }
 
   @Put('categories/:id')
+  @Journaliser('prestation.categorie.modifiee', { cible: categorie })
   @CategoryParam()
   @Catalogue()
   @NotFound('Catégorie introuvable')
@@ -97,6 +122,10 @@ export class AdminPrestationsController {
   }
 
   @Delete('categories/:id')
+  @Journaliser('prestation.categorie.supprimee', {
+    avant: nomAvant(PrestationCategory),
+    cible: categorie,
+  })
   @CategoryParam()
   @Catalogue()
   @NotFound('Catégorie introuvable')
@@ -110,6 +139,10 @@ export class AdminPrestationsController {
   }
 
   @Put('categories/:id/ordre')
+  @Journaliser('prestations.ordonnees', {
+    avant: nomAvant(PrestationCategory),
+    cible: categorie,
+  })
   @CategoryParam()
   @Catalogue()
   @NotFound('Catégorie introuvable')
@@ -123,6 +156,15 @@ export class AdminPrestationsController {
   }
 
   @Post()
+  @Journaliser<PrestationCategoryDto[]>('prestation.ajoutee', {
+    // Identifiant généré : la prestation est la dernière de sa catégorie dans la carte renvoyée
+    cible: ({ corps, reponse }) => ({
+      type: 'prestation',
+      id: reponse?.find((c) => c.id === corps?.categorieId)?.prestations.at(-1)
+        ?.id,
+      libelle: texte(corps?.nom),
+    }),
+  })
   @Created()
   @ApiOperation({
     summary: 'Ajouter une prestation',
@@ -135,6 +177,7 @@ export class AdminPrestationsController {
   }
 
   @Put(':id')
+  @Journaliser('prestation.modifiee', { cible: prestation })
   @ApiParam({ name: 'id', example: 'pose-mains-3f2a' })
   @Catalogue()
   @NotFound('Prestation introuvable')
@@ -149,6 +192,10 @@ export class AdminPrestationsController {
   }
 
   @Delete(':id')
+  @Journaliser('prestation.supprimee', {
+    avant: nomAvant(Prestation),
+    cible: prestation,
+  })
   @ApiParam({ name: 'id', example: 'pose-mains-3f2a' })
   @Catalogue()
   @NotFound('Prestation introuvable')

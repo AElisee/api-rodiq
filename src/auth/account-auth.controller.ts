@@ -23,6 +23,7 @@ import {
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { ErrorResponseDto } from '../common/error-response.dto';
+import { Journaliser, texte } from '../journal/journal.decorator';
 import { AccountAuthService } from './account-auth.service';
 import { AccountDto, AccountSessionDto } from './dto/account.dto';
 import { SignInDto } from './dto/sign-in.dto';
@@ -30,8 +31,30 @@ import { SignUpDto } from './dto/sign-up.dto';
 import { ClientOnly, Public } from './sessions/auth.decorators';
 import { CurrentSession } from './sessions/current-session.decorator';
 import type { Session } from './sessions/session.entity';
-import { extractSessionToken } from './sessions/session.guard';
+import {
+  type AuthenticatedRequest,
+  extractSessionToken,
+} from './sessions/session.guard';
 import { SessionsService } from './sessions/sessions.service';
+
+// Espace touché par les connexions : le site
+const ESPACE = { type: 'espace', id: 'client', libelle: 'Site' } as const;
+
+// Auteur d'une connexion ou d'une inscription réussie : le compte de la réponse ; sinon l'e-mail saisi
+const acteurConnexion = ({
+  reponse,
+  corps,
+}: {
+  reponse?: AccountSessionDto;
+  corps: any;
+}) =>
+  reponse
+    ? {
+        type: 'client' as const,
+        id: reponse.id,
+        nom: `${reponse.firstName} ${reponse.lastName}`,
+      }
+    : { type: 'anonyme' as const, nom: texte(corps?.email)?.toLowerCase() };
 
 @ApiTags('Clientes : authentification')
 @Controller()
@@ -43,6 +66,14 @@ export class AccountAuthController {
 
   @Post('auth/sign-up')
   @Public()
+  @Journaliser<AccountSessionDto>('compte.cree', {
+    acteur: acteurConnexion,
+    cible: ({ reponse }) => ({
+      type: 'compte',
+      id: reponse?.id,
+      libelle: reponse?.email,
+    }),
+  })
   @UseGuards(ThrottlerGuard)
   @ApiOperation({
     summary: 'Créer un compte',
@@ -77,6 +108,11 @@ export class AccountAuthController {
   @Post('auth/sign-in')
   @HttpCode(HttpStatus.OK)
   @Public()
+  @Journaliser<AccountSessionDto>('connexion.reussie', {
+    acteur: acteurConnexion,
+    cible: () => ESPACE,
+    refus: true,
+  })
   @UseGuards(ThrottlerGuard)
   @ApiOperation({
     summary: 'Se connecter',
@@ -109,6 +145,11 @@ export class AccountAuthController {
   @Post('auth/sign-out')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Public()
+  // Seulement si une session était ouverte : un simple effacement de cookie n'est pas une déconnexion
+  @Journaliser('deconnexion', {
+    cible: () => ESPACE,
+    si: ({ req }) => !!req.session,
+  })
   @ApiOperation({
     summary: 'Se déconnecter',
     description:
@@ -121,7 +162,9 @@ export class AccountAuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { token } = extractSessionToken(req, 'client');
-    await this.sessions.close('client', token, res);
+    const session = await this.sessions.close('client', token, res);
+    // Route publique : la session fermée est posée sur la requête pour nommer l'auteur au journal
+    if (session) (req as AuthenticatedRequest).session = session;
   }
 
   @Get('me')

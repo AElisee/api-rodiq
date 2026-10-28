@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { AdminOnly } from '../auth/sessions/auth.decorators';
 import { ErrorResponseDto } from '../common/error-response.dto';
+import { Journaliser, texte } from '../journal/journal.decorator';
 import {
   RejectReservationDto,
   ReservationAdminDto,
@@ -27,6 +28,12 @@ import {
   ReservationsQueryDto,
 } from './dto/reservations.dto';
 import { ReservationsService } from './reservations.service';
+
+const cible = ({ reponse }: { reponse?: ReservationAdminDto }) => ({
+  type: 'reservation' as const,
+  id: reponse?.id,
+  libelle: reponse?.reference,
+});
 
 const ReservationParam = () =>
   ApiParam({ name: 'id', description: 'Identifiant de la réservation' });
@@ -88,6 +95,7 @@ export class AdminReservationsController {
     'La réservation n’est plus en attente, ou le rendez-vous est passé',
   )
   @ApiOperation({ summary: 'Confirmer une demande en attente' })
+  @Journaliser('reservation.confirmee', { cible })
   confirm(@Param('id') id: string): Promise<ReservationAdminDto> {
     return this.reservations.confirm(id);
   }
@@ -99,6 +107,10 @@ export class AdminReservationsController {
   @ApiOperation({
     summary: 'Refuser une demande ou annuler un rendez-vous confirmé',
     description: 'Le motif est obligatoire et affiché à la cliente.',
+  })
+  @Journaliser('reservation.refusee', {
+    cible,
+    detail: ({ corps }) => texte(corps?.motif),
   })
   reject(
     @Param('id') id: string,
@@ -115,6 +127,7 @@ export class AdminReservationsController {
     summary: 'Marquer le soin terminé',
     description: 'Pour un rendez-vous confirmé, le jour même ou après.',
   })
+  @Journaliser('reservation.terminee', { cible })
   complete(@Param('id') id: string): Promise<ReservationAdminDto> {
     return this.reservations.complete(id);
   }

@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { BoutiqueModule } from './boutique/boutique.module';
 import { CommandesModule } from './commandes/commandes.module';
 import { ComptesModule } from './comptes/comptes.module';
+import { JournalModule } from './journal/journal.module';
 import { PrestationsModule } from './prestations/prestations.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { SettingsModule } from './settings/settings.module';
@@ -35,7 +36,7 @@ import { VisitesModule } from './visites/visites.module';
     CommandesModule,
     ComptesModule,
     VisitesModule,
-    VisitesModule,
+    JournalModule,
   ],
 })
 export class AppModule {}

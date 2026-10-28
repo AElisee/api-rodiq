@@ -24,6 +24,7 @@ import { ClientOnly } from '../auth/sessions/auth.decorators';
 import { CurrentSession } from '../auth/sessions/current-session.decorator';
 import type { Session } from '../auth/sessions/session.entity';
 import { ErrorResponseDto } from '../common/error-response.dto';
+import { Journaliser, texte } from '../journal/journal.decorator';
 import { MAX_PENDING_ORDERS } from './commandes.rules';
 import { CommandesService } from './commandes.service';
 import {
@@ -31,6 +32,12 @@ import {
   CommandeClienteDto,
   CreateCommandeDto,
 } from './dto/commandes.dto';
+
+const cible = ({ reponse }: { reponse?: CommandeClienteDto }) => ({
+  type: 'commande' as const,
+  id: reponse?.id,
+  libelle: reponse?.reference,
+});
 
 // Côté site : commande, suivi et annulation par la cliente connectée. Pas de commande sans
 // compte : les e-mails ne sont pas vérifiés, rattacher des commandes par e-mail les exposerait
@@ -41,6 +48,10 @@ export class CommandesController {
   constructor(private readonly commandes: CommandesService) {}
 
   @Post('commandes')
+  @Journaliser<CommandeClienteDto>('commande.creee', {
+    cible,
+    detail: ({ reponse }) => reponse && `${reponse.total} FCFA`,
+  })
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({
@@ -88,6 +99,10 @@ export class CommandesController {
   }
 
   @Post('me/commandes/:id/annuler')
+  @Journaliser<CommandeClienteDto>('commande.annulee', {
+    cible,
+    detail: ({ corps }) => texte(corps?.motif),
+  })
   @HttpCode(HttpStatus.OK)
   @ApiParam({ name: 'id', description: 'Identifiant de la commande' })
   @ApiOperation({

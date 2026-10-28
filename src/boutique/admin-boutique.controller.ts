@@ -23,6 +23,12 @@ import {
 } from '@nestjs/swagger';
 import { AdminOnly } from '../auth/sessions/auth.decorators';
 import { ErrorResponseDto } from '../common/error-response.dto';
+import {
+  type ContexteJournal,
+  Journaliser,
+  nomAvant,
+  texte,
+} from '../journal/journal.decorator';
 import { OrderDto } from '../prestations/dto/prestations.dto';
 import {
   AddPhotoDto,
@@ -36,6 +42,8 @@ import {
   SaveCategorieBoutiqueDto,
   UpdateProduitDto,
 } from './dto/boutique.dto';
+import { ProductCategory } from './entities/product-category.entity';
+import { Product } from './entities/product.entity';
 import { ProductCategoriesService } from './product-categories.service';
 import { ProductsService } from './products.service';
 
@@ -67,6 +75,23 @@ const ProductParam = () =>
 const UpdatedProduct = () =>
   ApiOkResponse({ type: ProduitAdminDto, description: 'Produit à jour' });
 
+const categorie = ({ params, corps, avant }: ContexteJournal) => ({
+  type: 'categorie_produits' as const,
+  id: params.id,
+  libelle: avant ?? texte(corps?.nom),
+});
+
+// Les routes produit renvoient le produit, sauf la suppression : nom lu avant
+const produit = ({
+  params,
+  reponse,
+  avant,
+}: ContexteJournal<ProduitAdminDto | undefined>) => ({
+  type: 'produit' as const,
+  id: reponse?.id ?? params.id,
+  libelle: reponse?.nom ?? avant,
+});
+
 // Écrans Boutique › Catégories et Boutique › Produits
 @ApiTags('Admin : boutique')
 @AdminOnly()
@@ -95,6 +120,7 @@ export class AdminBoutiqueController {
   }
 
   @Post('categories')
+  @Journaliser('boutique.categorie.ajoutee', { cible: categorie })
   @ApiCreatedResponse({
     type: [CategorieBoutiqueAdminDto],
     description: 'Catégories à jour',
@@ -112,6 +138,7 @@ export class AdminBoutiqueController {
 
   // Déclarée avant `categories/:id` : « ordre » n'est jamais un identifiant de catégorie
   @Put('categories/ordre')
+  @Journaliser('boutique.categories.ordonnees')
   @Categories()
   @ApiOperation({
     summary: 'Réordonner les catégories',
@@ -122,6 +149,7 @@ export class AdminBoutiqueController {
   }
 
   @Put('categories/:id')
+  @Journaliser('boutique.categorie.modifiee', { cible: categorie })
   @CategoryParam()
   @Categories()
   @NotFound('Catégorie introuvable')
@@ -138,6 +166,10 @@ export class AdminBoutiqueController {
   }
 
   @Delete('categories/:id')
+  @Journaliser('boutique.categorie.supprimee', {
+    avant: nomAvant(ProductCategory),
+    cible: categorie,
+  })
   @CategoryParam()
   @Categories()
   @NotFound('Catégorie introuvable')
@@ -186,6 +218,10 @@ export class AdminBoutiqueController {
   }
 
   @Post('produits')
+  @Journaliser<ProduitCreeDto>('produit.ajoute', {
+    cible: produit,
+    detail: ({ reponse }) => reponse?.photosRefusees.join(' ; '),
+  })
   @ApiCreatedResponse({
     type: ProduitCreeDto,
     description:
@@ -206,6 +242,7 @@ export class AdminBoutiqueController {
   }
 
   @Put('produits/:id')
+  @Journaliser('produit.modifie', { cible: produit })
   @ProductParam()
   @UpdatedProduct()
   @NotFound('Produit introuvable')
@@ -226,6 +263,7 @@ export class AdminBoutiqueController {
   }
 
   @Delete('produits/:id')
+  @Journaliser('produit.supprime', { avant: nomAvant(Product), cible: produit })
   @ProductParam()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Produit supprimé avec ses photos' })
@@ -240,6 +278,7 @@ export class AdminBoutiqueController {
   }
 
   @Post('produits/:id/photos')
+  @Journaliser('produit.photo.ajoutee', { cible: produit })
   @ProductParam()
   @HttpCode(HttpStatus.OK)
   @UpdatedProduct()
@@ -260,6 +299,7 @@ export class AdminBoutiqueController {
 
   // Déclarée avant `photos/:photoId`
   @Put('produits/:id/photos/ordre')
+  @Journaliser('produit.photos.ordonnees', { cible: produit })
   @ProductParam()
   @UpdatedProduct()
   @NotFound('Produit introuvable')
@@ -273,6 +313,7 @@ export class AdminBoutiqueController {
   }
 
   @Delete('produits/:id/photos/:photoId')
+  @Journaliser('produit.photo.retiree', { cible: produit })
   @ProductParam()
   @ApiParam({ name: 'photoId', description: 'Identifiant (UUID) de la photo' })
   @UpdatedProduct()
